@@ -1,0 +1,29 @@
+# ─── Credenciales (NUNCA subir al repositorio) ───
+.env
+
+# ─── Logs y capturas de pantalla ───
+logs/
+
+# ─── Python ───
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# ─── Playwright ───
+playwright-report/
+test-results/
+
+# ─── IDEs ───
+.vscode/
+.idea/
+*.swp
+*.swo

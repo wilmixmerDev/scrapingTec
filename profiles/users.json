@@ -1,0 +1,23 @@
+{
+  "_comment": "Archivo de perfiles de usuario para el Bot Ferrum (BONUS - multi-perfil).",
+  "_instrucciones": [
+    "Agrega aquí los perfiles de usuarios que usarán el bot.",
+    "La contraseña NO se guarda aquí. Se guarda en el .env con el formato:",
+    "FERRUM_USER_<NOMBRE_EN_MAYUSCULAS>_PASSWORD=tu_contraseña",
+    "Ejemplo: FERRUM_USER_ESTUDIANTE1_PASSWORD=miContraseña123"
+  ],
+  "profiles": [
+    {
+      "name": "default",
+      "username_env": "FERRUM_USERNAME",
+      "password_env": "FERRUM_PASSWORD",
+      "description": "Perfil principal (credenciales desde .env)"
+    },
+    {
+      "name": "estudiante1",
+      "username_env": "FERRUM_USER_ESTUDIANTE1_USERNAME",
+      "password_env": "FERRUM_USER_ESTUDIANTE1_PASSWORD",
+      "description": "Perfil de ejemplo para estudiante adicional"
+    }
+  ]
+}
