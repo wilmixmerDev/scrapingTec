@@ -1,19 +1,3 @@
-# ============================================================
-#  bot/navigator.py — Módulo de Navegación Académica
-#
-#  PROPÓSITO:
-#  Manejar toda la navegación dentro de la plataforma Ferrum:
-#  - Ir a "Mis Cursos"
-#  - Encontrar y entrar al curso objetivo
-#  - Localizar la sección "Evaluación Formativa"
-#  - Entrar al foro específico
-#
-#  ESTRATEGIA DE BÚSQUEDA:
-#  Usamos múltiples selectores alternativos (con fallback) porque
-#  Moodle puede variar su estructura según la versión o el tema visual.
-#  Si el primer selector falla, se intenta el siguiente.
-# ============================================================
-
 from loguru import logger
 from playwright.sync_api import Page
 
@@ -26,11 +10,9 @@ def go_to_my_courses(page: Page) -> None:
     """
     logger.info("📚 Buscando pestaña 'Mis cursos' en el menú superior...")
 
-    # Esperamos un poco a que el JS del menú cargue
     page.wait_for_load_state("networkidle")
     random_delay(2.0, 3.0)
 
-    # Selectores verificados visualmente en Ferrum
     selectors = [
         "a.nav-link[title*='Courses']",               # Navbar superior (Inglés)
         "a.nav-link[title*='cursos']",                # Navbar superior (Español)
@@ -41,7 +23,7 @@ def go_to_my_courses(page: Page) -> None:
     link = _find_element_with_fallback(page, selectors, "Boton Cursos")
     smooth_scroll_to(link)
     random_delay(0.5, 1.0)
-    
+
     logger.debug("   🖱️  Haciendo click visual en la pestaña de cursos...")
     hover_and_click(link)
 
@@ -56,7 +38,6 @@ def find_and_enter_course(page: Page, course_name: str) -> None:
     """
     logger.info(f"🔍 Buscando curso: '{course_name}'")
 
-    # Selector '.coursename' es el estándar en Ferrum
     selectors = [
         f"a.coursename:has-text('{course_name}')",
         f"a.aalink:has-text('{course_name}')",
@@ -67,7 +48,6 @@ def find_and_enter_course(page: Page, course_name: str) -> None:
     smooth_scroll_to(course_link)
     random_delay(1.0, 2.0)
 
-    # Click via JavaScript para evitar problemas de superposición del tema Adaptable
     logger.debug("   🖱️  Entrando al curso...")
     course_link.evaluate("el => el.click()")
 
@@ -86,7 +66,6 @@ def find_formative_section_and_enter_forum(
     """
     logger.info(f"📂 Buscando mosaico de sección: '{section_name}'")
 
-    # En Ferrum Grid, las secciones son 'grid-section-inner'
     section_selectors = [
         f"a.grid-section-inner:has-text('{section_name}')",
         f".grid-section-inner:has-text('{section_name}')",
@@ -96,13 +75,12 @@ def find_formative_section_and_enter_forum(
     section_tile = _find_element_with_fallback(page, section_selectors, section_name)
     smooth_scroll_to(section_tile)
     random_delay(1.0, 1.5)
-    
+
     logger.info(f"   🖱️  Haciendo click en mosaico '{section_name}' para abrir sección...")
     section_tile.click()
     page.wait_for_load_state("networkidle")
     random_delay(2.0, 3.0)
 
-    # ── Paso 2: Localizar el foro ahora que el Grid desplegó el contenido ─────
     logger.info(f"🗣️  Buscando foro: '{forum_name}'")
 
     forum_selectors = [
@@ -114,18 +92,15 @@ def find_formative_section_and_enter_forum(
     forum_link = _find_element_with_fallback(page, forum_selectors, forum_name)
     smooth_scroll_to(forum_link)
     random_delay(1.0, 1.5)
-    
+
     logger.debug("   🖱️  Entrando al foro...")
-    # Usamos evaluate para evitar cualquier overlay del tema Grid
     forum_link.evaluate("el => el.click()")
-    
+
     page.wait_for_load_state("networkidle")
     random_delay(1.0, 2.0)
 
     logger.success(f"✅ Dentro del foro: '{forum_name}'")
 
-
-# ── Función auxiliar privada ────────────────────────────────
 
 def _find_element_with_fallback(page: Page, selectors: list, element_name: str):
     """
@@ -148,7 +123,6 @@ def _find_element_with_fallback(page: Page, selectors: list, element_name: str):
     for selector in selectors:
         try:
             element = page.locator(selector).first
-            # Verificar que el elemento existe y es visible
             if element.count() > 0 and element.is_visible(timeout=3_000):
                 logger.debug(f"   ✔ Selector exitoso: '{selector}'")
                 return element

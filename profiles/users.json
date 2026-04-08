@@ -1,5 +1,5 @@
 {
-  "_comment": "Archivo de perfiles de usuario para el Bot Ferrum (BONUS - multi-perfil).",
+  "_comment": "Archivo de perfiles de usuario para el Bot Ferrum.",
   "_instrucciones": [
     "Agrega aquí los perfiles de usuarios que usarán el bot.",
     "La contraseña NO se guarda aquí. Se guarda en el .env con el formato:",

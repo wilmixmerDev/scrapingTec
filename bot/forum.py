@@ -1,23 +1,3 @@
-# ============================================================
-#  bot/forum.py — Módulo de Interacción con el Foro
-#
-#  PROPÓSITO:
-#  Manejar todas las acciones dentro del foro de Moodle:
-#  1. Leer posts existentes (comportamiento humano - BONUS)
-#  2. Encontrar el botón para publicar/responder
-#  3. Escribir el texto en el editor (TinyMCE o textarea)
-#  4. Enviar el formulario
-#  5. Verificar que la publicación fue exitosa
-#
-#  RETO TÉCNICO - Editor TinyMCE:
-#  Moodle usa un editor WYSIWYG llamado TinyMCE, que funciona dentro
-#  de un <iframe>. Para escribir en él, necesitamos:
-#  - Acceder al frame del iframe
-#  - Clickear en el body del editor
-#  - Escribir usando keyboard.type()
-#  Si TinyMCE falla, intentamos con textarea simple como fallback.
-# ============================================================
-
 import time
 import random
 
@@ -45,7 +25,6 @@ def read_forum_posts(page: Page) -> None:
     """
     logger.info("👀 Leyendo posts existentes del foro (comportamiento humano)...")
 
-    # Selectores comunes de posts en Moodle
     post_selectors = [
         ".forumpost",
         ".post.clearfix",
@@ -60,7 +39,6 @@ def read_forum_posts(page: Page) -> None:
         posts = page.locator(selector).all()
         if posts:
             posts_found = True
-            # Leer máximo 3 posts para no demorar demasiado
             posts_to_read = posts[:min(3, len(posts))]
             logger.info(f"   📖 Encontré {len(posts)} post(s). Leyendo {len(posts_to_read)}...")
 
@@ -68,7 +46,6 @@ def read_forum_posts(page: Page) -> None:
                 try:
                     smooth_scroll_to(post)
                     post.hover()
-                    # Tiempo de "lectura": entre 2 y 4 segundos por post
                     read_time = random.uniform(2.0, 4.0)
                     logger.debug(f"   📰 Leyendo post {i + 1}/{len(posts_to_read)} ({read_time:.1f}s)...")
                     time.sleep(read_time)
@@ -104,25 +81,18 @@ def post_comment(page: Page, comment_text: str) -> None:
     """
     logger.info(f"✍️  Preparando para publicar: '{comment_text}'")
 
-    # ── Paso 1: Encontrar y click en botón de publicar ────────
     _click_reply_button(page)
 
-    # Esperar a que cargue el formulario de respuesta
     page.wait_for_load_state("networkidle")
     random_delay(1.5, 2.5)
 
-    # ── Paso 2: Escribir en el editor ─────────────────────────
     _write_in_editor(page, comment_text)
     random_delay(0.8, 1.5)
 
-    # ── Paso 3: Enviar el formulario ──────────────────────────
     _submit_post(page)
 
-    # ── Paso 4: Verificar publicación ─────────────────────────
     _verify_post_published(page, comment_text)
 
-
-# ── Funciones auxiliares privadas ───────────────────────────
 
 def _click_reply_button(page: Page) -> None:
     """
@@ -138,7 +108,6 @@ def _click_reply_button(page: Page) -> None:
     """
     logger.info("🔘 Buscando botón para publicar...")
 
-    # Selectores específicos para el botón 'Add discussion topic' en Ferrum
     selectors = [
         "a.btn-primary[href='#collapseAddForm']",      # ID del colapsable
         "a:has-text('Add discussion topic')",           # Texto en inglés
@@ -154,14 +123,12 @@ def _click_reply_button(page: Page) -> None:
                 smooth_scroll_to(button)
                 random_delay(0.5, 1.0)
                 button.click()
-                
-                # Esperar a que el formulario se despliegue (buscamos el campo Subject)
+
                 page.wait_for_selector("input#id_subject", state="visible", timeout=10_000)
                 return
         except Exception:
             continue
 
-    # Fallback genérico para otros tipos de botones de publicación
     try:
         button = page.get_by_role("button", name="Add discussion topic").first
         if button.is_visible(timeout=2_000):
@@ -195,7 +162,6 @@ def _write_in_editor(page: Page, text: str) -> None:
     """
     logger.info("📝 Escribiendo texto en el editor...")
 
-    # 1. Completar el ASUNTO (Requerido en este foro)
     try:
         logger.debug("   ✍️  Completando campo de Asunto...")
         subject = page.locator("input#id_subject")
@@ -205,8 +171,6 @@ def _write_in_editor(page: Page, text: str) -> None:
     except Exception as e:
         logger.warning(f"   ⚠️ No se pudo completar el asunto: {e}")
 
-    # 2. Escribir en el editor Atto (DIV editable)
-    # Confirmado: En Ferrum NO se usa iframe para este foro
     try:
         editor_selector = "div#id_messageeditable"
         editor = page.locator(editor_selector)
@@ -216,14 +180,12 @@ def _write_in_editor(page: Page, text: str) -> None:
             editor.scroll_into_view_if_needed()
             editor.click()
             random_delay(0.5, 1.0)
-            
-            # Escribir el mensaje
+
             human_type(page, editor_selector, text)
             return
     except Exception as e:
         logger.debug(f"   ℹ️ Atto editor falló: {e}. Probando textarea...")
 
-    # ── Intento 2: Textarea simple ─────────────────────────────
     try:
         textarea_selectors = [
             "textarea[id*='message']",
@@ -239,10 +201,8 @@ def _write_in_editor(page: Page, text: str) -> None:
                 if textarea.count() > 0 and textarea.is_visible(timeout=3_000):
                     textarea.click()
                     time.sleep(random.uniform(0.3, 0.6))
-                    # Limpiar campo primero
                     textarea.fill("")
                     time.sleep(0.2)
-                    # Escribir el texto
                     human_type(page, sel, text)
                     logger.info("   ✅ Texto escrito en textarea simple")
                     return
@@ -252,7 +212,6 @@ def _write_in_editor(page: Page, text: str) -> None:
     except Exception as e:
         logger.debug(f"   ℹ️ Textarea fallback también falló: {e}")
 
-    # ── Intento 3: Cualquier elemento contenteditable ──────────
     try:
         content_editable = page.locator("[contenteditable='true']").first
         if content_editable.is_visible(timeout=3_000):
@@ -284,7 +243,6 @@ def _submit_post(page: Page) -> None:
     """
     logger.info("📤 Enviando publicación...")
 
-    # Selectores específicos de Ferrum para el botón de envío
     submit_selectors = [
         "input#id_submitbutton",    # ID exacto verificado
         "input[type='submit'][value*='Post']",
@@ -321,18 +279,13 @@ def _verify_post_published(page: Page, comment_text: str) -> None:
     logger.info("🔍 Verificando que la publicación fue exitosa...")
     random_delay(1.0, 2.0)
 
-    # Buscar el texto publicado en la página
     try:
-        # Moodle redirige a la página del foro tras publicar
-        # Buscamos el texto del comentario en el contenido de la página
         page.wait_for_selector(
             f"*:has-text('{comment_text}')",
             timeout=15_000
         )
         logger.success(f"✅ ¡Verificado! El texto '{comment_text}' está visible en el foro.")
     except Exception:
-        # Si no encontramos el texto, puede que la publicación haya fallado
-        # pero también puede ser que Moodle muestre confirmación diferente
         logger.warning(
             f"⚠️ No se pudo verificar automáticamente la publicación del texto "
             f"'{comment_text}'. Revisa el screenshot para confirmar."

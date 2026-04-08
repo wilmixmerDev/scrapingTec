@@ -1,18 +1,3 @@
-# ============================================================
-#  bot/human_behavior.py — Simulación de Comportamiento Humano
-#
-#  PROPÓSITO (BONUS):
-#  Hacer que el bot se comporte como un usuario real para:
-#  - Evitar detección por sistemas anti-bot
-#  - Simular tiempos de lectura y reacción humana
-#
-#  FUNCIONES:
-#  - random_delay()      → Espera aleatoria entre acciones
-#  - human_type()        → Escribe texto tecla por tecla, con velocidad variable
-#  - smooth_scroll_to()  → Hace scroll suave hasta un elemento
-#  - hover_and_click()   → Mueve el mouse al elemento antes de hacer click
-# ============================================================
-
 import time
 import random
 from loguru import logger
@@ -46,11 +31,10 @@ def human_type(page: Page, selector: str, text: str) -> None:
     """
     logger.debug(f"⌨️  Escribiendo en '{selector}': '{text}'")
     page.click(selector)
-    time.sleep(random.uniform(0.2, 0.5))  # Pausa antes de empezar a escribir
+    time.sleep(random.uniform(0.2, 0.5))
 
     for char in text:
         page.keyboard.type(char)
-        # Velocidad de tecleo más ágil: entre 20ms y 70ms por tecla
         time.sleep(random.uniform(0.02, 0.07))
 
 
@@ -70,12 +54,11 @@ def smooth_scroll_to(element: Locator) -> None:
         element: Locator del elemento objetivo
     """
     element.scroll_into_view_if_needed()
-    # Scroll adicional hacia arriba para compensar la sticky header (~120px)
     try:
         element.evaluate("el => window.scrollBy(0, -120)")
     except Exception:
         pass
-    time.sleep(random.uniform(0.4, 0.8))  # Pausa después del scroll
+    time.sleep(random.uniform(0.4, 0.8))
 
 
 def hover_and_click(element: Locator) -> None:
@@ -96,11 +79,10 @@ def hover_and_click(element: Locator) -> None:
     """
     try:
         element.hover()
-        time.sleep(random.uniform(0.2, 0.6))  # Breve pausa en el hover
+        time.sleep(random.uniform(0.2, 0.6))
         element.click()
     except Exception as e:
         error_str = str(e)
-        # Si el fallo es por un elemento que intercepta el evento de puntero...
         if "intercepts pointer events" in error_str or "element is not stable" in error_str or "timeout" in error_str.lower():
             logger.debug("   ⚠️  Overlay bloqueando click. Usando click forzado (force=True)...")
             element.click(force=True)

@@ -36,7 +36,6 @@ from loguru import logger
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 
-# ── Módulos del bot ──────────────────────────────────────────
 import config
 from bot.auth import login
 from bot.navigator import (
@@ -47,22 +46,16 @@ from bot.navigator import (
 from bot.forum import read_forum_posts, post_comment
 
 
-# ════════════════════════════════════════════════════════════
-#  CONFIGURACIÓN DE LOGS
-# ════════════════════════════════════════════════════════════
-
 def setup_logging() -> None:
     """
     Configura el sistema de logs con dos destinos:
     1. Consola: Con colores, fácil de leer durante la ejecución
     2. Archivo: En logs/bot.log, para revisión posterior
     """
-    Path("logs").mkdir(exist_ok=True)  # Crear carpeta logs si no existe
+    Path("logs").mkdir(exist_ok=True)
 
-    # Eliminar el handler por defecto de loguru
     logger.remove()
 
-    # Handler para consola (con colores)
     logger.add(
         sys.stdout,
         colorize=True,
@@ -74,20 +67,15 @@ def setup_logging() -> None:
         level="INFO",
     )
 
-    # Handler para archivo (sin colores, más detallado)
     logger.add(
         "logs/bot.log",
-        rotation="1 MB",       # Rotar cuando llegue a 1MB
-        retention="7 days",    # Guardar logs de los últimos 7 días
+        rotation="1 MB",
+        retention="7 days",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
-        level="DEBUG",         # Guardar también los mensajes de debug
+        level="DEBUG",
         encoding="utf-8",
     )
 
-
-# ════════════════════════════════════════════════════════════
-#  GESTIÓN DE CREDENCIALES
-# ════════════════════════════════════════════════════════════
 
 def get_credentials(args: argparse.Namespace) -> tuple[str, str]:
     """
@@ -107,27 +95,23 @@ def get_credentials(args: argparse.Namespace) -> tuple[str, str]:
     Returns:
         Tupla (username, password)
     """
-    load_dotenv()  # Cargar el .env si existe
+    load_dotenv()
 
     username = None
     password = None
 
-    # ── Prioridad 1: Perfil específico (--profile) ────────────
     if args.profile and args.profile != "default":
         logger.info(f"👤 Usando perfil: '{args.profile}'")
         username, password = _load_profile_credentials(args.profile)
 
-    # ── Prioridad 2: Variables de entorno (.env) ──────────────
     if not username:
         username = os.getenv("FERRUM_USERNAME")
     if not password:
         password = os.getenv("FERRUM_PASSWORD")
 
-    # ── Prioridad 3: Argumento --username de CLI ──────────────
     if not username and args.username:
         username = args.username
 
-    # ── Prioridad 4: Input interactivo ────────────────────────
     if not username or not password:
         print()
         print("=" * 55)
@@ -141,7 +125,6 @@ def get_credentials(args: argparse.Namespace) -> tuple[str, str]:
             username = input("  👤  Usuario: ").strip()
 
         if not password:
-            # getpass oculta la contraseña al escribirla (por seguridad)
             password = getpass.getpass("  🔒  Contraseña: ")
 
         print("=" * 55)
@@ -201,10 +184,6 @@ def _load_profile_credentials(profile_name: str) -> tuple[str | None, str | None
         return None, None
 
 
-# ════════════════════════════════════════════════════════════
-#  FUNCIÓN PRINCIPAL DEL BOT
-# ════════════════════════════════════════════════════════════
-
 def run_bot(username: str, password: str, headed: bool = False, slow_mo: int = 0) -> bool:
     """
     Ejecuta el flujo completo de automatización del bot Ferrum.
@@ -232,15 +211,13 @@ def run_bot(username: str, password: str, headed: bool = False, slow_mo: int = 0
 
     with sync_playwright() as playwright:
 
-        # ── Paso 1: Iniciar el navegador ──────────────────────
         logger.info("🌐 [1/8] Iniciando navegador Chromium...")
 
         browser = playwright.chromium.launch(
-            headless=not headed,  # False = visible, True = invisible
-            slow_mo=slow_mo,      # Delay entre acciones en ms
+            headless=not headed,
+            slow_mo=slow_mo,
         )
 
-        # Crear contexto con configuración realista (simula usuario real)
         context = browser.new_context(
             viewport={"width": 1280, "height": 800},
             user_agent=(
@@ -250,45 +227,36 @@ def run_bot(username: str, password: str, headed: bool = False, slow_mo: int = 0
             ),
         )
 
-        # Configurar timeouts globales
         context.set_default_timeout(config.DEFAULT_TIMEOUT)
         context.set_default_navigation_timeout(config.NAVIGATION_TIMEOUT)
 
         page = context.new_page()
 
         try:
-            # ── Paso 2: Login ─────────────────────────────────
             logger.info("🔐 [2/8] Realizando autenticación...")
             login(page, username, password, config.FERRUM_URL)
 
-            # ── Paso 3: Navegar a Mis Cursos ──────────────────
             logger.info("📚 [3/8] Navegando a 'Mis Cursos'...")
             go_to_my_courses(page)
 
-            # ── Paso 4: Entrar al curso ────────────────────────
             logger.info(f"📖 [4/8] Buscando curso '{config.COURSE_NAME}'...")
             find_and_enter_course(page, config.COURSE_NAME)
 
-            # ── Paso 5: Navegar a la sección y el foro ────────
             logger.info(f"📂 [5/8] Accediendo a '{config.SECTION_NAME}' → '{config.FORUM_NAME}'...")
             find_formative_section_and_enter_forum(
                 page, config.SECTION_NAME, config.FORUM_NAME
             )
 
-            # ── Paso 6: Leer otros posts (comportamiento humano)
             logger.info("👀 [6/8] Leyendo posts del foro...")
             read_forum_posts(page)
 
-            # ── Paso 7: Publicar el comentario ────────────────
             logger.info(f"✍️  [7/8] Publicando comentario...")
             post_comment(page, config.COMMENT_TEXT)
 
-            # ── Paso 8: Screenshot de confirmación ────────────
             logger.info("📸 [8/8] Tomando screenshot de confirmación...")
             screenshot_path = "logs/confirmacion_publicacion.png"
             page.screenshot(path=screenshot_path, full_page=False)
 
-            # ── Resultado final ───────────────────────────────
             logger.success("=" * 60)
             logger.success("🎉  ¡BOT COMPLETADO EXITOSAMENTE!")
             logger.success(f"💬  Comentario publicado: '{config.COMMENT_TEXT}'")
@@ -299,13 +267,11 @@ def run_bot(username: str, password: str, headed: bool = False, slow_mo: int = 0
             return True
 
         except Exception as error:
-            # ── Manejo de errores ─────────────────────────────
             logger.error("=" * 60)
             logger.error(f"💥  ERROR DURANTE LA EJECUCIÓN")
             logger.error(f"    {error}")
             logger.error("=" * 60)
 
-            # Screenshot del error para diagnóstico
             try:
                 error_screenshot_path = "logs/error_screenshot.png"
                 page.screenshot(path=error_screenshot_path)
@@ -316,15 +282,10 @@ def run_bot(username: str, password: str, headed: bool = False, slow_mo: int = 0
             return False
 
         finally:
-            # Siempre cerrar el navegador al terminar
             context.close()
             browser.close()
             logger.info("🔒 Navegador cerrado.")
 
-
-# ════════════════════════════════════════════════════════════
-#  PUNTO DE ENTRADA — Argumentos de línea de comandos
-# ════════════════════════════════════════════════════════════
 
 def parse_arguments() -> argparse.Namespace:
     """
@@ -378,21 +339,13 @@ Ejemplos de uso:
     return parser.parse_args()
 
 
-# ════════════════════════════════════════════════════════════
-#  EJECUCIÓN PRINCIPAL
-# ════════════════════════════════════════════════════════════
-
 if __name__ == "__main__":
-    # 1. Configurar sistema de logs
     setup_logging()
 
-    # 2. Leer argumentos de línea de comandos
     args = parse_arguments()
 
-    # 3. Obtener credenciales (interactivo, .env, o perfil)
     username, password = get_credentials(args)
 
-    # 4. Ejecutar el bot
     success = run_bot(
         username=username,
         password=password,
@@ -400,5 +353,4 @@ if __name__ == "__main__":
         slow_mo=args.slow_mo,
     )
 
-    # 5. Salir con código apropiado (0 = éxito, 1 = error)
     sys.exit(0 if success else 1)
